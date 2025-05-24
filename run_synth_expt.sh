@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name="synth_bl5_expt"
-#SBATCH --output=/data/user_data/mswaroop/Subset-Selection-Code/logs/synth_bl5_expt_%j.out
-#SBATCH --error=/data/user_data/mswaroop/Subset-Selection-Code/logs/synth_bl5_expt_%j.err
+#SBATCH --output=./logs/synth_bl5_expt_%j.out
+#SBATCH --error=./logs/synth_bl5_expt_%j.err
 #SBATCH --time=05:00:00 # Adjusted time based on master script
 #SBATCH --mem=64G # Assuming similar memory requirements
 #SBATCH --gres=gpu:1 # Assuming GPU is needed if task script uses it
@@ -24,8 +24,8 @@ N_GRAD_SAMPLES=5
 lr=0.05 # Single learning rate
 
 # Adjusted SAVE_PATH for a single run
-SAVE_PATH="/data/user_data/mswaroop/Subset-Selection-Code/results_v8/${t2}/${population}/single_run_may24/"
-mkdir -p "$SAVE_PATH" "/data/user_data/mswaroop/Subset-Selection-Code/logs/" # Ensure logs dir from master script exists
+SAVE_PATH="./results_v8/${t2}/${population}/single_run_may24/"
+mkdir -p "$SAVE_PATH" "./logs/" # Ensure logs dir from master script exists
 
 echo "Running synthetic experiment for baseline_failure_5..."
 bash gd_pops_v8_task.sh \

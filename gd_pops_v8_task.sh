@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name="v8_task_gd_pops"
-#SBATCH --output=/data/user_data/mswaroop/Subset-Selection-Code/logs/v8_task_gd_%j.out
-#SBATCH --error=/data/user_data/mswaroop/Subset-Selection-Code/logs/v8_task_gd_%j.err
+#SBATCH --output=./logs/v8_task_gd_%j.out
+#SBATCH --error=./logs/v8_task_gd_%j.err
 #SBATCH --mem=64G
 #SBATCH --cpus-per-task=4  # Increased CPU count for CPU-only processing
 #SBATCH --time=08:00:00
@@ -20,5 +20,5 @@ conda activate venv   # or your env name
 export OMP_NUM_THREADS=4
 export MKL_NUM_THREADS=4
 
-SCRIPT_DIR="/Users/mswaroop/Desktop/Projects/Bryan/Subset_selection/Subset-Selection-Code"
+SCRIPT_DIR=$(dirname "$0")/..
 python3 "$SCRIPT_DIR/gd_pops_v8.py" "$@"
