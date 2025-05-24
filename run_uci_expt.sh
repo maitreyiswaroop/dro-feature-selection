@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name="uci_expt"
-#SBATCH --output=/data/user_data/mswaroop/Subset-Selection-Code/logs/uci_expt_%j.out
-#SBATCH --error=/data/user_data/mswaroop/Subset-Selection-Code/logs/uci_expt_%j.err
+#SBATCH --output=./logs/uci_expt_%j.out
+#SBATCH --error=./logs/uci_expt_%j.err
 #SBATCH --time=01:00:00
 #SBATCH --partition=debug
 
@@ -11,7 +11,7 @@ seed=26 # Single seed
 penalty_lambda=0.0001
 lr=0.001 # Single learning rate
 
-SAVE_PATH="/data/user_data/mswaroop/Subset-Selection-Code/results_v8/${t2}/uci_sex/tuning_single/"
+SAVE_PATH="./results_v8/${t2}/uci_sex/tuning_single/"
 mkdir -p "$SAVE_PATH"
 
 sbatch gd_pops_v8_task.sh \
