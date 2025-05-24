@@ -1,0 +1,29 @@
+datasets/
+results/
+code_v1/
+subset/
+logs/
+results_v8/
+optuna_runs/
+optuna_studies/
+logs/
+folktables_data_storage/
+data_regression_plots/
+data_acs/
+data/
+
+# Python basics
+__pycache__/
+*.py[cod]
+
+# Mac system files
+.DS_Store
+
+# Results
+results/
+*.png
+
+data_cache/
+results_v8/
+results_v9/
+results_v10/
