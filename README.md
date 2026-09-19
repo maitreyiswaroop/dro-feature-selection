@@ -9,7 +9,7 @@ We study model-agnostic feature selection across multiple populations. The metho
 - `estimators.py`: conditional-mean, kernel, Monte Carlo, and influence-function estimators. The optimized kernel implementation is in `estimate_conditional_keops_flexible_optimized`, and the corresponding objective estimator is in `estimate_T2_kernel_IF_like_flexible`.
 - `gd_pops_v8.py`: primary experiment driver for the synthetic and UCI experiments.
 - `gd_pops_v10.py`: modular, checkpointed experiment driver used for ACS experiments.
-- `modules/`: data loading, checkpointing, feature selection, baselines, and downstream evaluation for the modular pipeline.
+- `dro_feature_selection/`: importable package containing data loading, checkpointing, feature selection, baselines, and downstream evaluation for the modular pipeline.
 - `data.py`, `data_acs.py`, `data_baseline_failures.py`, `data_uci.py`: data generation and preprocessing.
 - `baselines.py` and `downstream_models.py`: comparison methods and downstream evaluation.
 - `aggregate_results.py` and `visualize_training.py`: result aggregation and plots.
