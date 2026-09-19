@@ -100,6 +100,13 @@ class VariableSelector:
 
     def run_selection(self, pop_data, m1, m, budget, params):
         """Run our variable selection method with checkpointing"""
+        seed = params.get('seed')
+        if seed is not None:
+            np.random.seed(seed)
+            torch.manual_seed(seed)
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed_all(seed)
+
         # Check if already completed
         if self.checkpoint_manager and self.checkpoint_manager.is_our_method_complete():
             print("Our method already completed. Loading results...")
@@ -254,8 +261,23 @@ class VariableSelector:
                         else:
                             population_objective_values.append(float('nan'))
                 else:
-                    # MC estimator logic - would need to implement this based on gd_pops_v8.py
-                    population_objective_values.append(float('nan'))
+                    from dro_feature_selection.kernel_estimators import estimate_T2_mc_flexible
+
+                    with torch.no_grad():
+                        term2_value = estimate_T2_mc_flexible(
+                            X_std_torch=pop['X_std'],
+                            E_Yx_std_torch=pop['E_Yx_std'],
+                            param_torch=current_param_val_detached,
+                            param_type=parameterization,
+                            n_mc_samples=N_grad_samples,
+                            k_kernel=k_kernel,
+                        )
+                        penalty = self._compute_penalty(
+                            current_alpha, penalty_type, penalty_lambda
+                        ).item()
+                        population_objective_values.append(
+                            pop['term1_std'] - term2_value.item() + penalty
+                        )
             
             # Calculate robust objective for gradient
             valid_obj_values = [v for v in population_objective_values if not math.isnan(v)]

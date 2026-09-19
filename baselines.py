@@ -1,7 +1,6 @@
 # baselines.py
 import os
 from sklearn.linear_model import Lasso, LogisticRegression
-from sklearn.metrics import log_loss, accuracy_score, LogisticRegression
 from sklearn.metrics import log_loss, accuracy_score
 import xgboost as xgb 
 from typing import List, Dict, Any, Tuple, Optional
@@ -10,7 +9,7 @@ from sklearn.metrics import mean_squared_error
 try:
     from global_vars import *
 except ImportError:
-    print("Warning: global_vars.py not found. Using placeholder values for gd_pops_v7.py.")
+    print("Warning: global_vars.py not found. Using fallback constants.")
     EPS = 1e-9
     CLAMP_MIN_ALPHA = 1e-5
     CLAMP_MAX_ALPHA = 1e5

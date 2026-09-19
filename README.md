@@ -8,9 +8,8 @@ We study model-agnostic feature selection across multiple populations. The metho
 
 - `dro_feature_selection/kernel_estimators.py`: differentiable kernel, Monte Carlo, and influence-function-like objective estimators. The optimized kernel implementation is `estimate_conditional_keops_flexible_optimized`, and its corresponding objective estimator is `estimate_T2_kernel_IF_like_flexible`.
 - `estimators.py`: conditional-mean and gradient estimators, plus compatibility exports for the kernel functions used by the original experiment scripts.
-- `gd_pops_v8.py`: primary experiment driver for the synthetic and UCI experiments.
-- `gd_pops_v10.py`: modular, checkpointed experiment driver used for ACS experiments.
-- `dro_feature_selection/`: importable package containing data loading, checkpointing, feature selection, baselines, and downstream evaluation for the modular pipeline.
+- `run_experiment.py`: unified, checkpointed experiment driver for synthetic, UCI, and ACS experiments.
+- `dro_feature_selection/`: importable package containing data loading, checkpointing, feature selection, kernel estimators, baselines, and downstream evaluation.
 - `data.py`, `data_acs.py`, `data_baseline_failures.py`, `data_uci.py`: data generation and preprocessing.
 - `baselines.py` and `downstream_models.py`: comparison methods and downstream evaluation.
 - `aggregate_results.py` and `visualize_training.py`: result aggregation and plots.
@@ -42,8 +41,7 @@ The scripts contain SLURM directives and cluster-specific environment setup. Bef
 For direct invocation and the full list of arguments:
 
 ```bash
-python gd_pops_v8.py --help
-python gd_pops_v10.py --help
+python run_experiment.py --help
 ```
 
 Generated datasets, logs, and experiment outputs are intentionally excluded from version control.

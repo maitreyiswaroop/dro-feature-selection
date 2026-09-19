@@ -15,7 +15,7 @@ conda activate venv   # or your env name
 export OMP_NUM_THREADS=4
 export MKL_NUM_THREADS=4
 
-# Settings from gd_pops_v8_master_bl5.sh for baseline_failure_5
+# Representative baseline-failure experiment settings
 t2="mc_plugin"
 seed=7 # Single seed
 estimator="plugin"
@@ -24,11 +24,11 @@ N_GRAD_SAMPLES=5
 lr=0.05 # Single learning rate
 
 # Adjusted SAVE_PATH for a single run
-SAVE_PATH="./results_v8/${t2}/${population}/single_run_may24/"
+SAVE_PATH="./results/synthetic/${t2}/${population}/single_run/"
 mkdir -p "$SAVE_PATH" "./logs/" # Ensure logs dir from master script exists
 
 echo "Running synthetic experiment for baseline_failure_5..."
-bash gd_pops_v8_task.sh \
+bash run_experiment_task.sh \
   --populations $population $population $population \
   --m1 4 \
   --m 15 \

@@ -2,7 +2,6 @@ import numpy as np
 import os
 import pickle
 import matplotlib.pyplot as plt
-from resnets import create_resnet_datasets
 
 def generate_data(m: int = 10, n_samples: int=10000, 
                   custom_X: np.ndarray=None, # hack yway to have own data with some covariance structure
@@ -214,6 +213,8 @@ def generate_data_continuous(pop_id, m1, m, dataset_type="linear_regression",
     else:
         print(f"Generating ResNet dataset for population {pop_id}")
         A_meaningful = None
+        from resnets import create_resnet_datasets
+
         X_meaningful,Y = create_resnet_datasets(
             n = dataset_size,
             x_dist=data_distribution,
@@ -371,6 +372,8 @@ def generate_data_continuous_with_corr(pop_id, m1, m, dataset_type="linear_regre
         # ResNet case - handle similarly with correlation structure
         print(f"Generating ResNet dataset for population {pop_id}")
         A_meaningful = None
+        from resnets import create_resnet_datasets
+
         X_meaningful, Y = create_resnet_datasets(
             n = dataset_size,
             x_dist=data_distribution,
@@ -477,6 +480,8 @@ def generate_data_discrete(pop_id, m1, m, dataset_type="linear_regression",
     else:
         print(f"Generating ResNet dataset for population {pop_id}")
         A_meaningful = None
+        from resnets import create_resnet_datasets
+
         X_meaningful,Y = create_resnet_datasets(
             n = dataset_size,
             x_dist=data_distribution,

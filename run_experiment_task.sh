@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name="v8_task_gd_pops"
-#SBATCH --output=./logs/v8_task_gd_%j.out
-#SBATCH --error=./logs/v8_task_gd_%j.err
+#SBATCH --job-name="dro_feature_selection"
+#SBATCH --output=./logs/dro_feature_selection_%j.out
+#SBATCH --error=./logs/dro_feature_selection_%j.err
 #SBATCH --mem=64G
 #SBATCH --cpus-per-task=4  # Increased CPU count for CPU-only processing
 #SBATCH --time=08:00:00
@@ -21,4 +21,4 @@ export OMP_NUM_THREADS=4
 export MKL_NUM_THREADS=4
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-python3 "$SCRIPT_DIR/gd_pops_v8.py" "$@"
+python3 "$SCRIPT_DIR/run_experiment.py" "$@"

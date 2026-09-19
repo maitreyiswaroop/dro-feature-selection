@@ -11,10 +11,10 @@ seed=26 # Single seed
 penalty_lambda=0.0001
 lr=0.001 # Single learning rate
 
-SAVE_PATH="./results_v8/${t2}/uci_sex/tuning_single/"
+SAVE_PATH="./results/uci/${t2}/uci_sex/tuning_single/"
 mkdir -p "$SAVE_PATH"
 
-sbatch gd_pops_v8_task.sh \
+sbatch run_experiment_task.sh \
   --populations $pop $pop $pop \
   --budget 10 \
   --penalty-type Reciprocal_L1 \

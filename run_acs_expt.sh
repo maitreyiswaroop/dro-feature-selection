@@ -16,7 +16,7 @@ export OMP_NUM_THREADS=4
 export MKL_NUM_THREADS=4
 
 # Experiment settings
-SAVE_PATH="./results_v10_acs_single"
+SAVE_PATH="./results/acs/single_run"
 POPULATIONS=("acs")
 ACS_DATA_FRACTION=0.1
 M1=10
@@ -30,7 +30,7 @@ PENALTY_TYPE="Reciprocal_L1"
 PENALTY_LAMBDA=0.0001
 SEED=123 # Single seed
 
-python3 gd_pops_v10.py \
+python3 run_experiment.py \
   --populations ${POPULATIONS[@]} \
   --acs_data_fraction $ACS_DATA_FRACTION \
   --m1 $M1 \

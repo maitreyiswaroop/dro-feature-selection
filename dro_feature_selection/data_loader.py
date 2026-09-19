@@ -330,7 +330,7 @@ class DataManager:
         for i, pop_config in enumerate(pop_configs):
             # Use different seeds for each population
             pop_seed = seed + i if seed is not None else None
-            rng = np.random.RandomState(pop_seed)
+            rng = np.random.default_rng(pop_seed)
             
             pop_id = pop_config.get('pop_id', i)
             dataset_type = pop_config['dataset_type']
@@ -348,14 +348,11 @@ class DataManager:
                 common_meaningful_indices=common_meaningful_indices
             )
             
-            # Split into train and test/val
-            test_val_fraction = 0.4
-            n_total = X_np.shape[0]
-            indices = rng.permutation(n_total)
-            n_train = int(n_total * (1 - test_val_fraction))
-            
-            train_indices = indices[:n_train]
-            test_val_indices = indices[n_train:]
+            # Match the split used by the paper experiment implementation.
+            test_val_fraction = 0.8
+            indices = rng.permutation(X_np.shape[0])
+            test_val_indices = indices[:int(X_np.shape[0] * test_val_fraction)]
+            train_indices = np.setdiff1d(np.arange(X_np.shape[0]), test_val_indices)
             
             X_train = X_np[train_indices]
             Y_train = Y_np[train_indices]

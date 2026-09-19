@@ -394,7 +394,7 @@ def estimate_gradient_autograd_flexible(X_std_torch: torch.Tensor,
     # --- Total Objective (for Autograd, ignoring constant T1) ---
     # L = -T2 + P (we minimize this, gradient is -dT2/dparam + dP/dparam)
     # Or L = T2 + P (if minimizing this, gradient is dT2/dparam + dP/dparam)
-    # Let's assume we minimize L = T2 + P based on gd_pops_v6 logic
+    # Preserve the original objective convention: minimize T2 + penalty.
     objective_L = term2_est + penalty_value
 
     # --- Compute Gradient ---
