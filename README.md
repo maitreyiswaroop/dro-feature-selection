@@ -46,3 +46,13 @@ python gd_pops_v10.py --help
 ```
 
 Generated datasets, logs, and experiment outputs are intentionally excluded from version control.
+
+## Development
+
+Run the characterization and entry-point tests with:
+
+```bash
+python -m unittest discover -s tests
+```
+
+Repository refactors follow the scientific and reproducibility constraints in [`docs/refactoring-invariants.md`](docs/refactoring-invariants.md).
