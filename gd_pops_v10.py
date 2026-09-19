@@ -22,13 +22,11 @@ import torch
 from typing import List, Dict, Any, Optional
 
 # Import modular components
-from dro_feature_selection import (
-    BaselineMethods,
-    CheckpointManager,
-    DataManager,
-    DownstreamEvaluator,
-    VariableSelector,
-)
+from dro_feature_selection.baseline_methods import BaselineMethods
+from dro_feature_selection.checkpoint import CheckpointManager
+from dro_feature_selection.data_loader import DataManager
+from dro_feature_selection.downstream_eval import DownstreamEvaluator
+from dro_feature_selection.variable_selector import VariableSelector
 
 from visualize_training import plot_training_metrics, create_multi_series_horizontal_bars
 
