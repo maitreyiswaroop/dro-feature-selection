@@ -20,5 +20,5 @@ conda activate venv   # or your env name
 export OMP_NUM_THREADS=4
 export MKL_NUM_THREADS=4
 
-SCRIPT_DIR=$(dirname "$0")/..
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 python3 "$SCRIPT_DIR/gd_pops_v8.py" "$@"
