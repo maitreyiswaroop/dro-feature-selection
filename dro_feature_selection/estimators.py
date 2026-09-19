@@ -12,7 +12,7 @@ import xgboost as xgb # Import XGBoost
 from typing import Optional
 import math
 
-from global_vars import *
+from dro_feature_selection.config import *
 torch.set_num_threads(CPU_COUNT)
 
 def compute_penalty(alpha: torch.Tensor, # Input is always alpha

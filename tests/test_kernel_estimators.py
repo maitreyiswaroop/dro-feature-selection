@@ -2,7 +2,7 @@ import unittest
 
 import torch
 
-from estimators import (
+from dro_feature_selection.estimators import (
     estimate_conditional_keops_flexible,
     estimate_conditional_keops_flexible_optimized,
 )

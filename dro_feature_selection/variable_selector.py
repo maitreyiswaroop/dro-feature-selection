@@ -19,7 +19,7 @@ class VariableSelector:
         
     def _init_parameter(self, m, parameterization, alpha_init, noise=0.1, device="cpu"):
         """Initialize parameter based on parameterization"""
-        from global_vars import CLAMP_MIN_ALPHA, CLAMP_MAX_ALPHA, THETA_CLAMP_MIN, THETA_CLAMP_MAX, EPS
+        from dro_feature_selection.config import CLAMP_MIN_ALPHA, CLAMP_MAX_ALPHA, THETA_CLAMP_MIN, THETA_CLAMP_MAX, EPS
         
         init_alpha_val = torch.ones(m, device=device)
         alpha_init_lower = alpha_init.lower()
@@ -77,7 +77,7 @@ class VariableSelector:
 
     def _compute_penalty(self, alpha, penalty_type, penalty_lambda):
         """Compute the penalty term for the objective function"""
-        from global_vars import CLAMP_MIN_ALPHA, CLAMP_MAX_ALPHA, EPS
+        from dro_feature_selection.config import CLAMP_MIN_ALPHA, CLAMP_MAX_ALPHA, EPS
         
         alpha_clamped = torch.clamp(alpha, min=CLAMP_MIN_ALPHA, max=CLAMP_MAX_ALPHA)
         
@@ -159,7 +159,7 @@ class VariableSelector:
         scheduler_kwargs = params.get('scheduler_kwargs', {})
         scheduler = self._setup_scheduler(optimizer, scheduler_type, scheduler_kwargs)
         
-        from global_vars import EPS, FREEZE_THRESHOLD_ALPHA, THETA_FREEZE_THRESHOLD
+        from dro_feature_selection.config import EPS, FREEZE_THRESHOLD_ALPHA, THETA_FREEZE_THRESHOLD
         
         # Optimization loop with intermediate checkpoints
         param_history = [param.detach().cpu().numpy().copy()]
@@ -188,7 +188,7 @@ class VariableSelector:
                 if gradient_mode == 'autograd':
                     if t2_estimator_type == 'mc_plugin':
                         # Import this here to avoid circular imports
-                        from estimators import estimate_T2_mc_flexible
+                        from dro_feature_selection.estimators import estimate_T2_mc_flexible
                         term2_value = estimate_T2_mc_flexible(
                             X_std_torch=X_std, 
                             E_Yx_std_torch=E_Yx_std, 
@@ -198,7 +198,7 @@ class VariableSelector:
                             k_kernel=k_kernel
                         )
                     elif t2_estimator_type == 'kernel_if_like':
-                        from estimators import estimate_T2_kernel_IF_like_flexible
+                        from dro_feature_selection.estimators import estimate_T2_kernel_IF_like_flexible
                         Y_std = pop['Y_std']
                         term2_value = estimate_T2_kernel_IF_like_flexible(
                             X_std_torch=X_std,
@@ -227,7 +227,7 @@ class VariableSelector:
             
             for pop in pop_data:
                 if objective_value_estimator == 'if':
-                    from estimators import IF_estimator_squared_conditional
+                    from dro_feature_selection.estimators import IF_estimator_squared_conditional
                     
                     with torch.no_grad():
                         # Get the device of X_std
@@ -306,7 +306,7 @@ class VariableSelector:
                 total_gradient = param.grad.clone() if param.grad is not None else torch.zeros_like(param)
             
             elif gradient_mode == 'reinforce':
-                from estimators import estimate_gradient_reinforce_flexible
+                from dro_feature_selection.estimators import estimate_gradient_reinforce_flexible
                 
                 winning_pop_data = pop_data[winning_pop_idx]
                 total_gradient = estimate_gradient_reinforce_flexible(

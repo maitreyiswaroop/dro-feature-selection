@@ -1,13 +1,13 @@
-datasets/
-code_v1/
-subset/
-logs/
-optuna_runs/
-optuna_studies/
-folktables_data_storage/
-data_regression_plots/
-data_acs/
-data/
+/datasets/
+/code_v1/
+/subset/
+/logs/
+/optuna_runs/
+/optuna_studies/
+/folktables_data_storage/
+/data_regression_plots/
+/data_acs/
+/data/
 
 # Python environments and caches
 __pycache__/

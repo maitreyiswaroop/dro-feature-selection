@@ -6,18 +6,7 @@ import xgboost as xgb
 from typing import List, Dict, Any, Tuple, Optional
 import numpy as np
 from sklearn.metrics import mean_squared_error
-try:
-    from global_vars import *
-except ImportError:
-    print("Warning: global_vars.py not found. Using fallback constants.")
-    EPS = 1e-9
-    CLAMP_MIN_ALPHA = 1e-5
-    CLAMP_MAX_ALPHA = 1e5
-    THETA_CLAMP_MIN = math.log(CLAMP_MIN_ALPHA) if CLAMP_MIN_ALPHA > 0 else -11.5
-    THETA_CLAMP_MAX = math.log(CLAMP_MAX_ALPHA) if CLAMP_MAX_ALPHA > 0 else 11.5
-    N_FOLDS = 5
-    FREEZE_THRESHOLD_ALPHA = 1e-4
-    THETA_FREEZE_THRESHOLD = math.log(FREEZE_THRESHOLD_ALPHA) if FREEZE_THRESHOLD_ALPHA > 0 else -9.2
+from dro_feature_selection.config import EPS
 
 # UTILITIES
 def standardize_data(X, Y, classification=False):
@@ -109,7 +98,18 @@ def baseline_lasso_comparison(
     best_metric = float('inf')  # Lower is better for MSE and log loss
 
     for current_alpha in lasso_alphas_to_try:
-        model = Lasso(alpha=current_alpha, fit_intercept=False, max_iter=10000, tol=1e-4)
+        if classification:
+            model = LogisticRegression(
+                penalty='l1',
+                solver='liblinear',
+                C=1.0 / max(current_alpha, EPS),
+                fit_intercept=False,
+                max_iter=10000,
+                tol=1e-4,
+                random_state=seed,
+            )
+        else:
+            model = Lasso(alpha=current_alpha, fit_intercept=False, max_iter=10000, tol=1e-4)
         model.fit(X_std, Y_std)
         
         # Get coefficients and selected features
@@ -124,7 +124,7 @@ def baseline_lasso_comparison(
         if classification:
             # Use log loss for classification
             y_pred_proba = model.predict_proba(X_std)
-            prediction_metric = log_loss(Y_std, y_pred_proba)
+            prediction_metric = log_loss(Y_std, y_pred_proba, labels=model.classes_)
             accuracy = accuracy_score(Y_std, model.predict(X_std))
         else:
             # Use MSE for regression
@@ -212,7 +212,7 @@ def baseline_xgb_comparison(pop_data: List[Dict[str, Any]],
     if classification:
         y_pred = model.predict(X_std)
         y_pred_proba = model.predict_proba(X_std)[:, 1] if len(model.classes_) == 2 else None
-        prediction_metric = log_loss(Y_std, y_pred_proba) if y_pred_proba is not None else None
+        prediction_metric = log_loss(Y_std, y_pred_proba, labels=model.classes_) if y_pred_proba is not None else None
         accuracy = accuracy_score(Y_std, y_pred)
     else:
         prediction_metric = mean_squared_error(Y_std, model.predict(X_std))
@@ -299,7 +299,18 @@ def baseline_dro_lasso_comparison(
         pop_weights = np.ones(len(population_data)) / len(population_data)
         
         # Initialize model
-        model = Lasso(alpha=current_alpha, fit_intercept=False, max_iter=10000, tol=tol)
+        if classification:
+            model = LogisticRegression(
+                penalty='l1',
+                solver='liblinear',
+                C=1.0 / max(current_alpha, EPS),
+                fit_intercept=False,
+                max_iter=10000,
+                tol=tol,
+                random_state=seed,
+            )
+        else:
+            model = Lasso(alpha=current_alpha, fit_intercept=False, max_iter=10000, tol=tol)
         
         # DRO iterations
         for _ in range(max_iter):
@@ -334,7 +345,7 @@ def baseline_dro_lasso_comparison(
                 if classification:
                     # Log loss for classification
                     pred_proba = model.predict_proba(X)
-                    loss = log_loss(Y, pred_proba)
+                    loss = log_loss(Y, pred_proba, labels=model.classes_)
                 else:
                     # MSE loss for regression
                     pred = model.predict(X)
@@ -359,7 +370,10 @@ def baseline_dro_lasso_comparison(
         
         # Calculate maximum loss across populations
         if classification:
-            max_loss = max(log_loss(Y, model.predict_proba(X)) for X, Y in population_data)
+            max_loss = max(
+                log_loss(Y, model.predict_proba(X), labels=model.classes_)
+                for X, Y in population_data
+            )
             # Also get accuracy for reporting
             accuracies = [accuracy_score(Y, model.predict(X)) for X, Y in population_data]
             min_accuracy = min(accuracies)
@@ -485,10 +499,10 @@ def baseline_dro_xgb_comparison(
                     y_pred_proba = y_pred_proba[:, 1]
                     # Convert to 2D array for log_loss
                     y_pred_proba_2d = np.vstack((1-y_pred_proba, y_pred_proba)).T
-                    loss = log_loss(Y, y_pred_proba_2d)
+                    loss = log_loss(Y, y_pred_proba_2d, labels=model.classes_)
                 else:
                     # Multiclass classification
-                    loss = log_loss(Y, y_pred_proba)
+                    loss = log_loss(Y, y_pred_proba, labels=model.classes_)
             else:
                 # MSE loss for regression
                 pred = model.predict(X)
@@ -510,7 +524,8 @@ def baseline_dro_xgb_comparison(
     # Calculate max loss and min accuracy across populations for reporting
     if classification:
         max_loss = max(
-            log_loss(Y, model.predict_proba(X)) for X, Y in population_data
+            log_loss(Y, model.predict_proba(X), labels=model.classes_)
+            for X, Y in population_data
         )
         # Also calculate accuracies for reporting
         accuracies = [accuracy_score(Y, model.predict(X)) for X, Y in population_data]

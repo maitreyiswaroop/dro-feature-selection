@@ -46,7 +46,7 @@ class BaselineMethods:
     
     def baseline_lasso(self, pop_data, budget, alpha_lasso, seed, is_classification=False):
         """Lasso baseline method"""
-        from baselines import baseline_lasso_comparison
+        from dro_feature_selection.baselines import baseline_lasso_comparison
         
         print(f"Running Lasso baseline with budget {budget}, alpha={alpha_lasso}, classification={is_classification}")
         
@@ -67,7 +67,7 @@ class BaselineMethods:
 
     def baseline_dro_lasso(self, pop_data, budget, alpha_lasso, seed, is_classification=False):
         """DRO Lasso baseline method"""
-        from baselines import baseline_dro_lasso_comparison
+        from dro_feature_selection.baselines import baseline_dro_lasso_comparison
         
         print(f"Running DRO Lasso baseline with budget {budget}, alpha={alpha_lasso}, classification={is_classification}")
         
@@ -91,7 +91,7 @@ class BaselineMethods:
 
     def baseline_xgb(self, pop_data, budget, seed, is_classification=False):
         """XGBoost baseline method"""
-        from baselines import baseline_xgb_comparison
+        from dro_feature_selection.baselines import baseline_xgb_comparison
         
         print(f"Running XGBoost baseline with budget {budget}, classification={is_classification}")
         
@@ -111,7 +111,7 @@ class BaselineMethods:
 
     def baseline_dro_xgb(self, pop_data, budget, seed, is_classification=False):
         """DRO XGBoost baseline method"""
-        from baselines import baseline_dro_xgb_comparison
+        from dro_feature_selection.baselines import baseline_dro_xgb_comparison
         
         print(f"Running DRO XGBoost baseline with budget {budget}, classification={is_classification}")
         

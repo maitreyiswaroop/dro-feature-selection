@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 #SBATCH --job-name="synth_bl5_expt"
 #SBATCH --output=./logs/synth_bl5_expt_%j.out
 #SBATCH --error=./logs/synth_bl5_expt_%j.err
@@ -8,12 +9,9 @@
 #SBATCH --partition=debug # Or general, adjust as needed
 #SBATCH --cpus-per-task=4 # Assuming similar CPU requirements
 
-echo "Loading environment..."
-source /home/$USER/miniconda/etc/profile.d/conda.sh
-conda activate venv   # or your env name
-
-export OMP_NUM_THREADS=4
-export MKL_NUM_THREADS=4
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+REPOSITORY_ROOT=$(cd "$SCRIPT_DIR/../.." && pwd)
+cd "$REPOSITORY_ROOT"
 
 # Representative baseline-failure experiment settings
 t2="mc_plugin"
@@ -28,8 +26,8 @@ SAVE_PATH="./results/synthetic/${t2}/${population}/single_run/"
 mkdir -p "$SAVE_PATH" "./logs/" # Ensure logs dir from master script exists
 
 echo "Running synthetic experiment for baseline_failure_5..."
-bash run_experiment_task.sh \
-  --populations $population $population $population \
+bash "$SCRIPT_DIR/run_experiment.sh" \
+  --populations "$population" "$population" "$population" \
   --m1 4 \
   --m 15 \
   --dataset-size 12000 \
@@ -40,22 +38,22 @@ bash run_experiment_task.sh \
   --budget 10 \
   --penalty-type Reciprocal_L1 \
   --penalty-lambda 0.001 \
-  --learning-rate $lr \
+  --learning-rate "$lr" \
   --optimizer-type sgd \
   --parameterization theta \
   --alpha-init random_1 \
   --patience 20 \
   --gradient-mode autograd \
-  --t2-estimator-type $t2 \
-  --N-grad-samples $N_GRAD_SAMPLES \
-  --estimator-type $estimator \
+  --t2-estimator-type "$t2" \
+  --N-grad-samples "$N_GRAD_SAMPLES" \
+  --estimator-type "$estimator" \
   --base-model-type xgb \
   --objective-value-estimator if \
   --k-kernel 1000 \
   --scheduler-type CosineAnnealingLR \
   --scheduler-t-max 180 \
   --scheduler-min-lr 1e-6 \
-  --seed $seed \
+  --seed "$seed" \
   --save-path "$SAVE_PATH" \
   --verbose \
   --param-freezing

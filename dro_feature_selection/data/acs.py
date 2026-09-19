@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-data_acs.py
+ACS data loading and preprocessing.
 
 Loads ACS person-level data via Folktables, splits into state-based populations,
 provides preprocessing (imputation & scaling), plotting utilities for
@@ -9,7 +9,7 @@ population dicts, and supports specifying ACS survey year.
 
 Usage:
   # As a module:
-  from data_acs import (
+  from dro_feature_selection.data.acs import (
       generate_data_acs,
       preprocess_data,
       plot_feature_histograms,
@@ -18,7 +18,7 @@ Usage:
   )
 
   # As a script (with plotting):
-  python data_acs.py --year 2018 --plot --save_dir output_data --plot_dir output_plots
+  python -m dro_feature_selection.data.acs --year 2018 --plot --save_dir output_data --plot_dir output_plots
 
 """
 import os
@@ -90,7 +90,7 @@ def generate_data_acs(
     # folktables ACSDataSource now requires survey_year, horizon, survey in ctor
     ds = ACSDataSource(survey_year=year, horizon=horizon, survey=survey, root_dir=root_dir)
     # get_data now only takes states parameter
-    df = ds.get_data(states=None, download=True)  # Get all states, then filter
+    df = ds.get_data(states=states, download=True)
 
     # figure out which column holds the state FIPS code
     # it might be named "state" (new folktables), "ST", "STFIP", or already "STATEFIP"
@@ -424,13 +424,13 @@ def get_acs_pop_data(
 def get_pop_data_acs(states=None, 
                      year=2018, 
                      target="PINCP",
-                     root_dir="/data/user_data/mswaroop/Subset-Selection-Code/folktables_data_storage",
+                     root_dir=None,
                      seed=None,
                      estimator_type="if",
                      device="cpu",
                      base_model_type="rf",
                      acs_data_fraction=0.1,
-                     importance_file="/data/user_data/mswaroop/Subset-Selection-Code/acs_analysis_output/acs_feature_importances.csv"):
+                     importance_file=None):
     """
     Process ACS data for population-based subset selection with specific data cleaning steps.
     
@@ -440,6 +440,18 @@ def get_pop_data_acs(states=None,
     # Use default states if not provided
     if states is None:
         states = ["CA", "NY", "FL"]  # Use first 3 states
+
+    repository_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    if root_dir is None:
+        root_dir = os.path.join(repository_root, "datasets", "folktables")
+    if importance_file is None:
+        importance_file = os.path.join(
+            repository_root,
+            "artifacts",
+            "analysis",
+            "acs",
+            "acs_feature_importances.csv",
+        )
     
     # Load feature importances
     try:
@@ -558,8 +570,8 @@ def get_pop_data_acs(states=None,
         sd['Y'] = sd['Y'][mask]
     
     # Process into training and test data
-    from estimators import plugin_estimator_conditional_mean, IF_estimator_conditional_mean
-    from global_vars import N_FOLDS, EPS
+    from dro_feature_selection.estimators import plugin_estimator_conditional_mean, IF_estimator_conditional_mean
+    from dro_feature_selection.config import N_FOLDS, EPS
     
     pop_data = []
     pop_data_test_val = []

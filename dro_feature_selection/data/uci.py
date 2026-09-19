@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-data_uci_adult.py
+UCI Adult data loading and preprocessing.
 
 Loads UCI Adult Income dataset, splits into demographic-based populations,
 provides preprocessing (imputation & scaling), plotting utilities for
@@ -9,7 +9,7 @@ population dicts.
 
 Usage:
   # As a module:
-  from data_uci_adult import (
+  from dro_feature_selection.data.uci import (
       generate_data_uci,
       preprocess_data,
       plot_feature_histograms,
@@ -18,7 +18,7 @@ Usage:
   )
 
   # As a script (with plotting):
-  python data_uci_adult.py --plot --save_dir output_data --plot_dir output_plots
+  python -m dro_feature_selection.data.uci --plot --save_dir output_data --plot_dir output_plots
 """
 import os
 import pickle
@@ -183,7 +183,8 @@ def generate_data_uci(
     # ----------------------------------------------------------------
 
     # Download and load the data
-    train_path, test_path = download_adult_dataset()
+    download_dir = save_dir or os.path.join("datasets", "uci")
+    train_path, test_path = download_adult_dataset(download_dir)
     df = load_adult_dataset(train_path, test_path)
     df = prepare_adult_dataset(df)
     

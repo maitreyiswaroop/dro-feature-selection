@@ -27,10 +27,10 @@ class PaperEntrypointTests(unittest.TestCase):
 
     def test_documented_shell_entrypoints_parse(self):
         for relative_path in (
-            "run_experiment_task.sh",
-            "run_synth_expt.sh",
-            "run_uci_expt.sh",
-            "run_acs_expt.sh",
+            "scripts/slurm/run_experiment.sh",
+            "scripts/slurm/run_synthetic.sh",
+            "scripts/slurm/run_uci.sh",
+            "scripts/slurm/run_acs.sh",
         ):
             subprocess.run(
                 ["bash", "-n", str(REPOSITORY_ROOT / relative_path)],

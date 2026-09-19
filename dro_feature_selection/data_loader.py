@@ -1,25 +1,37 @@
 # data_loader.py
 import os
 import pickle
+import hashlib
+import json
 import numpy as np
 import torch
 torch.set_num_threads(4)
 from typing import List, Dict, Tuple, Optional, Any
 
-# Import your existing data handling functions
-# from data_uci import get_uci_pop_data
-# from data_acs import get_acs_pop_data
-# ...
-
 class DataManager:
-    def __init__(self, cache_dir="./data_cache"):
+    def __init__(self, cache_dir="./data_cache", raw_data_dir="./datasets", acs_importance_file=None):
         self.cache_dir = cache_dir
+        self.raw_data_dir = raw_data_dir
+        if acs_importance_file is None:
+            repository_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            acs_importance_file = os.path.join(
+                repository_root,
+                "artifacts",
+                "analysis",
+                "acs",
+                "acs_feature_importances.csv",
+            )
+        self.acs_importance_file = acs_importance_file
         os.makedirs(cache_dir, exist_ok=True)
+        os.makedirs(raw_data_dir, exist_ok=True)
     
-    def get_dataset_cache_path(self, pop_configs, seed, dataset_size, noise_scale=0.1, corr_strength=0.0):
+    def get_dataset_cache_path(self, **configuration):
         """Generate a unique cache path for the dataset configuration"""
-        pop_str = "_".join([p['dataset_type'] for p in pop_configs])
-        cache_name = f"data_{pop_str}_seed{seed}_size{dataset_size}_noise{noise_scale}_corr{corr_strength}.pkl"
+        pop_configs = configuration["pop_configs"]
+        pop_str = "_".join(p["dataset_type"] for p in pop_configs)
+        serialized = json.dumps(configuration, sort_keys=True, default=str)
+        digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:12]
+        cache_name = f"data_{pop_str}_{digest}.pkl"
         return os.path.join(self.cache_dir, cache_name)
     
     def load_or_generate_data(self, pop_configs, m1, m, dataset_size, 
@@ -27,12 +39,30 @@ class DataManager:
                               estimator_type="if", device="cpu", 
                               base_model_type="rf", seed=None,
                               acs_data_fraction=0.5,
+                              acs_states=None,
+                              uci_data_fraction=0.2,
                               force_regenerate=False,
                               uci_populations=None,
                               exclude_population_features=True,
                               is_classification=False):
         """Load cached dataset or generate a new one"""
-        cache_path = self.get_dataset_cache_path(pop_configs, seed, dataset_size, noise_scale, corr_strength)
+        cache_path = self.get_dataset_cache_path(
+            pop_configs=pop_configs,
+            m1=m1,
+            m=m,
+            dataset_size=dataset_size,
+            noise_scale=noise_scale,
+            corr_strength=corr_strength,
+            estimator_type=estimator_type,
+            base_model_type=base_model_type,
+            seed=seed,
+            acs_data_fraction=acs_data_fraction,
+            acs_states=acs_states,
+            uci_data_fraction=uci_data_fraction,
+            uci_populations=uci_populations,
+            exclude_population_features=exclude_population_features,
+            is_classification=is_classification,
+        )
         
         # Try to load from cache if not forcing regeneration
         if not force_regenerate and os.path.exists(cache_path):
@@ -73,13 +103,14 @@ class DataManager:
         elif any('acs' in pop_config['dataset_type'].lower() for pop_config in pop_configs):
             pop_data, pop_data_test_val = self._generate_acs_data(
                 pop_configs, m1, m, dataset_size, acs_data_fraction,
-                estimator_type, device, base_model_type, seed
+                estimator_type, device, base_model_type, seed, acs_states
             )
         elif any('uci' in pop_config['dataset_type'].lower() for pop_config in pop_configs):
             pop_data, pop_data_test_val = self._generate_uci_data(
                 pop_configs, m1, m, dataset_size, seed, 
                 estimator_type, device, base_model_type,
                 uci_populations=uci_populations,
+                uci_data_fraction=uci_data_fraction,
                 exclude_population_features=exclude_population_features,  # Pass parameter
                 force_regenerate=force_regenerate
             )
@@ -150,7 +181,7 @@ class DataManager:
     def _generate_baseline_data(self, pop_configs, dataset_size, m, noise_scale, corr_strength,
                                estimator_type, device, base_model_type, seed):
         # Implementation using get_pop_data_baseline_failures 
-        from data_baseline_failures import get_pop_data_baseline_failures
+        from dro_feature_selection.data.baseline_failures import get_pop_data_baseline_failures
         return get_pop_data_baseline_failures(
             pop_configs=pop_configs, dataset_size=dataset_size,
             n_features=m, noise_scale=noise_scale, corr_strength=corr_strength,
@@ -159,35 +190,36 @@ class DataManager:
         )
     
     def _generate_acs_data(self, pop_configs, m1, m, dataset_size, acs_data_fraction,
-                      estimator_type, device, base_model_type, seed):
+                      estimator_type, device, base_model_type, seed, acs_states=None):
         """Generate data from ACS dataset split by states"""
-        from data_acs import get_pop_data_acs
+        from dro_feature_selection.data.acs import get_pop_data_acs
         
         # Extract states if specified in pop_configs
-        states = None
+        states = acs_states
         if pop_configs and isinstance(pop_configs, list) and len(pop_configs) > 0:
             if 'states' in pop_configs[0]:
                 states = pop_configs[0]['states']
         
-        # Use the get_pop_data_acs function which already exists in data_acs.py
         return get_pop_data_acs(
             states=states,  # Use specified states or default (CA, NY, FL)
             year=2018,
             target="PINCP",
-            root_dir="/data/user_data/mswaroop/Subset-Selection-Code/folktables_data_storage",
+            root_dir=os.path.join(self.raw_data_dir, "folktables"),
             seed=seed,
             estimator_type=estimator_type,
             device=device,
             base_model_type=base_model_type,
             acs_data_fraction=acs_data_fraction,
+            importance_file=self.acs_importance_file,
         )
     
     def _generate_uci_data(self, pop_configs, m1, m, dataset_size, seed, 
                      estimator_type, device, base_model_type, uci_populations=None,
+                        uci_data_fraction=0.2,
                         exclude_population_features=True,
                      force_regenerate=True):
         """Implement UCI data generation with appropriate population groups"""
-        from data_uci import get_uci_pop_data
+        from dro_feature_selection.data.uci import get_uci_pop_data
         
         # Use specified populations  
         pop_groups = uci_populations if uci_populations else ["Male", "Female"]
@@ -198,25 +230,30 @@ class DataManager:
         return self._process_uci_data(
             pop_groups, seed, estimator_type, device, base_model_type, 
             is_classification=True,
-            exclude_population_features=exclude_population_features
+            uci_data_fraction=uci_data_fraction,
+            exclude_population_features=exclude_population_features,
+            force_regenerate=force_regenerate,
         )
     
     def _process_uci_data(self, pop_groups, seed, estimator_type, device, base_model_type, 
-                         is_classification=True, exclude_population_features=True):
+                         is_classification=True, uci_data_fraction=0.2,
+                         exclude_population_features=True,
+                         force_regenerate=False):
         """Process UCI data with the selected population groups"""
-        from data_uci import get_uci_pop_data
-        from estimators import plugin_estimator_conditional_mean, IF_estimator_conditional_mean
-        from global_vars import N_FOLDS, EPS
+        from dro_feature_selection.data.uci import get_uci_pop_data
+        from dro_feature_selection.estimators import plugin_estimator_conditional_mean, IF_estimator_conditional_mean
+        from dro_feature_selection.config import N_FOLDS, EPS
         
         # Get population data
         pop_data_raw = get_uci_pop_data(
             populations=pop_groups,
             subsample=True,
-            subsample_fraction=0.2,
+            subsample_fraction=uci_data_fraction,
             target="income_binary",
             categorical_encoding='onehot',
             seed=seed,
-            force_regenerate=True,
+            save_dir=os.path.join(self.raw_data_dir, "uci"),
+            force_regenerate=force_regenerate,
             exclude_population_features=exclude_population_features  # Pass through
         )
         
@@ -317,9 +354,9 @@ class DataManager:
     def _generate_synthetic_data(self, pop_configs, m1, m, dataset_size, noise_scale, corr_strength,
                             estimator_type, device, base_model_type, seed):
         """Generate synthetic data using the existing data generation functions"""
-        from data import generate_data_continuous_with_corr
-        from estimators import plugin_estimator_conditional_mean, IF_estimator_conditional_mean
-        from global_vars import N_FOLDS, EPS
+        from dro_feature_selection.data.synthetic import generate_data_continuous_with_corr
+        from dro_feature_selection.estimators import plugin_estimator_conditional_mean, IF_estimator_conditional_mean
+        from dro_feature_selection.config import N_FOLDS, EPS
         
         # Common meaningful indices for populations to share
         common_meaningful_indices = np.arange(max(1, m1 // 2))

@@ -26,8 +26,10 @@ from dro_feature_selection.checkpoint import CheckpointManager
 from dro_feature_selection.data_loader import DataManager
 from dro_feature_selection.downstream_eval import DownstreamEvaluator
 from dro_feature_selection.variable_selector import VariableSelector
-
-from visualize_training import plot_training_metrics, create_multi_series_horizontal_bars
+from dro_feature_selection.visualization import (
+    create_multi_series_horizontal_bars,
+    plot_training_metrics,
+)
 
 
 def get_latest_run_number(save_path: str) -> int:
@@ -116,7 +118,11 @@ def run_pipeline(args, resume_path=None):
             print(f"Warning: No parameters file found at {params_path}. Using command line args.")
     
     # ===== STAGE 1: DATA LOADING =====
-    data_manager = DataManager(cache_dir="./data_cache")
+    data_manager = DataManager(
+        cache_dir=args.cache_dir,
+        raw_data_dir=args.raw_data_dir,
+        acs_importance_file=args.acs_importance_file,
+    )
     
     # Check if data is already loaded
     if checkpoint_manager.is_data_loaded():
@@ -158,8 +164,11 @@ def run_pipeline(args, resume_path=None):
             base_model_type=args.base_model_type,
             seed=args.seed,
             acs_data_fraction=args.acs_data_fraction,
+            acs_states=args.acs_states,
+            uci_data_fraction=args.uci_data_fraction,
             force_regenerate=args.force_regenerate_data,
             uci_populations=args.uci_populations,
+            exclude_population_features=args.exclude_population_features,
             is_classification=is_classification
         )
         
@@ -176,10 +185,12 @@ def run_pipeline(args, resume_path=None):
         checkpoint_manager.mark_data_loaded(data_path)
         print(f"Data generated and saved to: {data_path}")
     
-    # Set the correct dimension for UCI data
-    if is_classification and len(pop_data) > 0:
-        args.m = pop_data[0]['X_raw'].shape[1]
-        print(f"Data dimension set to {args.m}")
+    # Preprocessing can change the feature dimension for real datasets.
+    if pop_data:
+        actual_dimension = pop_data[0]['X_raw'].shape[1]
+        if args.m != actual_dimension:
+            args.m = actual_dimension
+            print(f"Data dimension set to {args.m} after preprocessing")
     
     # Determine budget
     budget = args.budget
@@ -330,6 +341,9 @@ def parse_args():
     # Add resume functionality
     parser.add_argument('--resume', type=str, default=None, help='Resume from a specific run path')
     parser.add_argument('--save-path', '--save_path', dest='save_path', type=str, default='./results/', help='Path to save results')
+    parser.add_argument('--cache-dir', dest='cache_dir', default='./data_cache', help='Generated-dataset cache directory')
+    parser.add_argument('--raw-data-dir', dest='raw_data_dir', default='./datasets', help='Downloaded raw-data directory')
+    parser.add_argument('--acs-importance-file', dest='acs_importance_file', default=None, help='Optional ACS feature-ranking CSV')
     parser.add_argument('--populations', type=str, nargs='+', help='List of population types')
     parser.add_argument('--m1', type=int, default=10, help='Number of variables to select')
     parser.add_argument('--m', type=int, default=100, help='Total number of variables')
@@ -340,6 +354,8 @@ def parse_args():
     parser.add_argument('--estimator-type', '--estimator_type', dest='estimator_type', type=str, default='if', choices=['plugin', 'if'], help='Estimator used for E[Y|X]')
     parser.add_argument('--base-model-type', '--base_model_type', dest='base_model_type', type=str, default='rf', choices=['rf', 'krr', 'xgb'], help='Base model used by the estimator')
     parser.add_argument('--acs-data-fraction', '--acs_data_fraction', dest='acs_data_fraction', type=float, default=0.2, help='Fraction of ACS data')
+    parser.add_argument('--acs-states', dest='acs_states', nargs='+', default=None, help='ACS state abbreviations (default: CA NY FL)')
+    parser.add_argument('--uci-data-fraction', dest='uci_data_fraction', type=float, default=0.2, help='Fraction sampled from each UCI population')
     parser.add_argument('--force-regenerate-data', '--force_regenerate_data', dest='force_regenerate_data', action='store_true', help='Force data regeneration')
     parser.add_argument('--budget', type=int, default=None, help='Budget for variable selection')
     parser.add_argument('--parameterization', type=str, default='alpha', choices=['alpha', 'theta'], help='Parameter to optimize (alpha or theta)')

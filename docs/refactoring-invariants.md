@@ -12,7 +12,7 @@ The repository may be reorganized, but a refactor must preserve the scientific i
 ## Paper experiments
 
 - Keep the synthetic, UCI, and ACS entry points runnable with their existing arguments.
-- Preserve the parameters encoded by the three `run_*_expt.sh` scripts unless a change is explicitly documented.
+- Preserve the parameters encoded by the three dataset launchers in `scripts/slurm/` unless a change is explicitly documented.
 - Do not silently change random seeds, preprocessing, population definitions, objectives, baselines, or result schemas.
 - Compare representative outputs against the pre-refactor implementation before merging mathematical or pipeline changes.
 

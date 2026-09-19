@@ -1,7 +1,7 @@
 # data_baseline_failures.py
 import numpy as np
-from global_vars import EPS # Assuming EPS and N_FOLDS are in global_vars
-from estimators import *
+from dro_feature_selection.config import EPS
+from dro_feature_selection.estimators import *
 import torch
 
 def standardize_data(X, Y):
@@ -713,8 +713,7 @@ def get_pop_data_baseline_failures( # Renamed main getter function
 
         print(f"Sub-population {sub_pop_dict['pop_id']}: Precomputing E[Y|X] ({estimator_type}/{base_model_type}) for training data...")
         try:
-            # N_FOLDS should be defined, e.g., from global_vars or passed as an argument
-            from global_vars import N_FOLDS # Make sure N_FOLDS is accessible
+            from dro_feature_selection.config import N_FOLDS
             if estimator_type == "plugin":
                 E_Yx_orig_np_train = plugin_estimator_conditional_mean(X_train_raw, Y_train_raw, base_model_type, n_folds=N_FOLDS, seed=current_seed)
             elif estimator_type == "if":

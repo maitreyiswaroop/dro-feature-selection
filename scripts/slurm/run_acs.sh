@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 #SBATCH --job-name="acs_expt"
 #SBATCH --output=./logs/acs_expt_%j.out
 #SBATCH --error=./logs/acs_expt_%j.err
@@ -8,12 +9,9 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --partition=general
 
-echo "Activating environment..."
-source /home/$USER/miniconda/etc/profile.d/conda.sh
-conda activate venv
-
-export OMP_NUM_THREADS=4
-export MKL_NUM_THREADS=4
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+REPOSITORY_ROOT=$(cd "$SCRIPT_DIR/../.." && pwd)
+cd "$REPOSITORY_ROOT"
 
 # Experiment settings
 SAVE_PATH="./results/acs/single_run"
@@ -30,18 +28,18 @@ PENALTY_TYPE="Reciprocal_L1"
 PENALTY_LAMBDA=0.0001
 SEED=123 # Single seed
 
-python3 run_experiment.py \
-  --populations ${POPULATIONS[@]} \
-  --acs_data_fraction $ACS_DATA_FRACTION \
-  --m1 $M1 \
-  --m $M \
-  --dataset_size $DATASET_SIZE \
-  --noise_scale $NOISE_SCALE \
-  --corr_strength $CORR_STRENGTH \
-  --budget $BUDGET \
-  --learning_rate $LEARNING_RATE \
-  --penalty_type $PENALTY_TYPE \
-  --penalty_lambda $PENALTY_LAMBDA \
+bash "$SCRIPT_DIR/run_experiment.sh" \
+  --populations "${POPULATIONS[@]}" \
+  --acs_data_fraction "$ACS_DATA_FRACTION" \
+  --m1 "$M1" \
+  --m "$M" \
+  --dataset_size "$DATASET_SIZE" \
+  --noise_scale "$NOISE_SCALE" \
+  --corr_strength "$CORR_STRENGTH" \
+  --budget "$BUDGET" \
+  --learning_rate "$LEARNING_RATE" \
+  --penalty_type "$PENALTY_TYPE" \
+  --penalty_lambda "$PENALTY_LAMBDA" \
   --optimizer_type adam \
   --parameterization alpha \
   --alpha_init random_5 \
@@ -53,7 +51,7 @@ python3 run_experiment.py \
   --N_grad_samples 10 \
   --estimator_type plugin \
   --base_model_type xgb \
-  --seed $SEED \
-  --save_path $SAVE_PATH \
+  --seed "$SEED" \
+  --save_path "$SAVE_PATH" \
   --force_regenerate_data \
   --k_kernel 500

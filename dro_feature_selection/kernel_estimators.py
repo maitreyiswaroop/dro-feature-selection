@@ -4,7 +4,7 @@ import torch
 from sklearn.model_selection import KFold
 from torch import Tensor
 
-from global_vars import CLAMP_MAX_ALPHA, CLAMP_MIN_ALPHA
+from dro_feature_selection.config import CLAMP_MAX_ALPHA, CLAMP_MIN_ALPHA
 
 
 def estimate_conditional_expectation_knn(

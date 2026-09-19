@@ -146,13 +146,16 @@ class DownstreamEvaluator:
                 model = RandomForestClassifier(n_estimators=100, random_state=seed, n_jobs=-1)
                 model.fit(X_train, Y_train)
                 Y_pred = model.predict(X_test)
-                Y_pred_proba = model.predict_proba(X_test)
+                observed_probabilities = model.predict_proba(X_test)
+                Y_pred_proba = np.zeros((len(X_test), 2), dtype=float)
+                for column, label in enumerate(model.classes_.astype(int)):
+                    Y_pred_proba[:, label] = observed_probabilities[:, column]
                 
                 # Record classification metrics
                 result = {
                     'population': pop['pop_id'],
                     'downstream_accuracy': accuracy_score(Y_test, Y_pred),
-                    'logloss': log_loss(Y_test, Y_pred_proba),
+                    'logloss': log_loss(Y_test, Y_pred_proba, labels=[0, 1]),
                     'selected_indices': selected_indices,
                     'source': method_name
                 }
