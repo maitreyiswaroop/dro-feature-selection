@@ -1,144 +1,12 @@
 """Differentiable kernel estimators used by the feature-selection objective."""
 
 import torch
-from sklearn.model_selection import KFold
 from torch import Tensor
 
 from dro_feature_selection.config import CLAMP_MAX_ALPHA, CLAMP_MIN_ALPHA
 
 
-def estimate_conditional_expectation_knn(
-        X_ref: torch.Tensor,       # Reference features [n_ref, d]
-        S_query: torch.Tensor,     # Query features S(alpha) [n_query, d]
-        E_Y_X_ref: torch.Tensor,   # Reference E[Y|X] values [n_ref]
-        alpha: torch.Tensor,       # Noise parameters [d]
-        k: int = 1000,             # Number of neighbors
-        clamp_min: float = 1e-5,   # Min value for alpha and squared distances
-        clamp_max_dist: float = 1e6 # Max value for squared distances
-        ) -> torch.Tensor:
-    """
-    Differentiable kNN kernel-weighted estimate of E[Y|S_query] using references.
-      W_ij ~ exp( -(1/2)* || (S_i - X_j) / sqrt(alpha) ||^2 )
-      E[Y|S_i] = sum_{j in kNN(S_i)} W_ij * E_Y_X_ref[j].
-
-    Ensures tensors are on the same device as S_query.
-    """
-    device = S_query.device
-    n_ref = X_ref.shape[0]
-    n_query = S_query.shape[0]
-
-    # Move reference data to the correct device if necessary
-    X_ref = X_ref.to(device)
-    E_Y_X_ref = E_Y_X_ref.to(device)
-    alpha = alpha.to(device) # Ensure alpha is also on the right device
-
-    # 1) Clamp alpha and compute inverse sqrt variance
-    alpha_safe = torch.clamp(alpha, min=clamp_min)       # (d,)
-    inv_sqrt_alpha = torch.rsqrt(alpha_safe)             # (d,) -> 1/sqrt(alpha)
-
-    # 2) Scale features into Mahalanobis space based on alpha
-    Xs_scaled = X_ref * inv_sqrt_alpha                   # (n_ref, d)
-    Ss_scaled = S_query * inv_sqrt_alpha                 # (n_query, d)
-
-    # 3) Compute pairwise squared distances in scaled space
-    #    D2_ij = || Ss_scaled_i - Xs_scaled_j ||^2
-    #    Using cdist is generally efficient and stable
-    if n_ref > 10000:
-        # Compute squared distances in mini-batches to reduce peak memory
-        batch_size = 50
-        D2_chunks = []
-        for i in range(0, n_query, batch_size):
-            chunk = Ss_scaled[i:i+batch_size]
-            D2_chunks.append(torch.cdist(chunk, Xs_scaled, p=2).pow(2))
-        D2 = torch.cat(D2_chunks, dim=0)
-    else:
-        D2 = torch.cdist(Ss_scaled, Xs_scaled, p=2).pow(2)     # (n_query, n_ref)
-
-    # Clamp distances to avoid potential numerical issues (optional but safe)
-    D2 = torch.clamp(D2, min=clamp_min, max=clamp_max_dist) # (n_query, n_ref)
-
-    # 4) Find k-nearest neighbors for each query point S_i based on scaled distance
-    actual_k = min(k, n_ref)
-    if actual_k < 1:
-        print(f"Warning: actual_k={actual_k} < 1 in kernel estimation. Returning mean.")
-        # Return mean of reference E[Y|X] as fallback
-        return torch.full((n_query,), E_Y_X_ref.mean(), device=device, dtype=S_query.dtype)
-
-    # topk finds the k smallest distances and their indices
-    # Use torch.no_grad() for idx finding if not backpropping through indices (usually safe)
-    with torch.no_grad():
-         # D2_knn: distances to k nearest neighbors (n_query, k)
-         # knn_indices: indices of these neighbors in X_ref (n_query, k)
-        D2_knn, knn_indices = torch.topk(D2, actual_k, dim=1, largest=False)
-
-    # Important: Re-select distances using indices *within* the computation graph
-    # if gradients through D2 are needed for alpha (which they are).
-    # Gather the distances corresponding to the selected indices.
-    # This ensures the gradient path for D2 -> alpha is maintained.
-    D2_knn_grad = D2.gather(1, knn_indices) # (n_query, k)
-
-    # 5) Calculate weights using softmax over the k neighbors
-    #    logW = -0.5 * D2_knn (use the version with grad)
-    logW = -0.5 * D2_knn_grad                            # (n_query, k)
-    W = torch.softmax(logW, dim=1)                       # (n_query, k), rows sum to 1
-
-    # 6) Gather the E[Y|X] values for the k neighbors
-    #    knn_indices shape: (n_query, k)
-    #    E_Y_X_ref shape: (n_ref,) -> Need to index E_Y_X_ref using knn_indices
-    #    Use gather or direct indexing
-    E_Y_X_neighbors = E_Y_X_ref[knn_indices]             # (n_query, k)
-
-    # 7) Compute weighted average
-    E_Y_S_estimate = (W * E_Y_X_neighbors).sum(dim=1)    # (n_query,)
-
-    return E_Y_S_estimate
-
-
-def estimate_conditional_kernel_oof(
-    X_batch: torch.Tensor,
-    S_batch: torch.Tensor,
-    E_Y_X: torch.Tensor,
-    alpha: torch.Tensor,
-    n_folds: int = 5,
-    clamp_min: float = 1e-4,
-    clamp_max: float = 1e6,
-    k: int = 100,
-    seed: int = 42
-) -> torch.Tensor:
-    """
-    Out-of-fold kNN-kernel estimates for E[Y|S].
-    """
-    n_test = S_batch.size(0)
-    oof = torch.zeros(n_test, device=X_batch.device)
-
-    # Ensure k is not larger than the smallest possible training fold size
-    min_train_size = max(1, int(X_batch.shape[0] * (1 - 1/n_folds)) if n_folds > 1 else X_batch.shape[0])
-    actual_k = min(k, min_train_size)
-    if actual_k < 1:
-        print("Warning: k adjusted to 0 in estimate_conditional_kernel_oof. Returning zeros.")
-        return oof # Or handle differently
-
-    if n_folds <= 1:
-        oof = estimate_conditional_expectation_knn(
-            X_batch, S_batch, E_Y_X, alpha, k=actual_k, clamp_min=clamp_min, clamp_max=clamp_max
-        )
-        return oof
-    else:
-        # Note: This OOF implementation for the kernel estimator is slightly different
-        # from the plugin/IF OOF. Here, for each test fold of S_batch, it uses the
-        # *entire* X_batch and E_Y_X as the "training" set for the kernel weighting.
-        # This might be intended, but differs from typical CV where the model/reference
-        # data is also split. If true OOF is needed, X_batch and E_Y_X should also be split.
-        # Assuming current implementation is intended:
-        kf  = KFold(n_splits=n_folds, shuffle=True, random_state=seed)
-        for _, te_idx in kf.split(S_batch): # We only need test indices for S_batch
-            oof[te_idx] = estimate_conditional_expectation_knn(
-                X_batch, S_batch[te_idx], E_Y_X, alpha, k=actual_k, clamp_min=clamp_min, clamp_max=clamp_max
-            )
-        return oof
-
-
-def estimate_conditional_keops(
+def estimate_conditional_kernel(
     X: Tensor,           # (n_train, d) - Reference features
     S: Tensor,           # (n_test, d)  - Query features
     E_Y_X: Tensor,       # (n_train,) - Reference values
@@ -239,10 +107,14 @@ def estimate_conditional_keops(
     return E_Y_S_estimate
 
 
-def chunked_pairwise_distance(X: torch.Tensor, S: torch.Tensor, chunk_size: int = 50) -> torch.Tensor:
+def chunked_pairwise_squared_distances(
+    X: torch.Tensor, S: torch.Tensor, chunk_size: int = 50
+) -> torch.Tensor:
     """
-    Calculates pairwise distances between X and S in a memory-efficient way using chunks.
-    Preserves gradient flow while reducing peak memory usage.
+    Calculate squared pairwise distances in query batches.
+
+    This reduces temporary ``cdist`` memory, but the returned tensor still has
+    shape ``(n_test, n_train)``.
     
     Args:
         X: First set of points (n_train, d)
@@ -278,7 +150,7 @@ def chunked_pairwise_distance(X: torch.Tensor, S: torch.Tensor, chunk_size: int 
     return D2
 
 
-def estimate_conditional_keops_flexible_optimized(
+def estimate_conditional_kernel_batched(
     X: torch.Tensor,           # (n_train, d) - Reference features
     S: torch.Tensor,           # (n_test, d)  - Query features
     E_Y_X: torch.Tensor,       # (n_train,) - Reference values
@@ -311,11 +183,8 @@ def estimate_conditional_keops_flexible_optimized(
     # Create output tensor
     results = torch.zeros(n_test, dtype=S.dtype, device=device)
     
-    # Automatically determine batch size based on data dimensions
-    # Adjust the divisor based on your GPU memory
-    min_batch_size = 1
-    suggested_batch_size = max(min_batch_size, min(max_batch_size, int(1e9 / (n_train * d * 4))))
-    batch_size = suggested_batch_size
+    # Keep the approximate distance work buffer below 1 GB.
+    batch_size = max(1, min(max_batch_size, int(1e9 / (n_train * d * 4))))
     
     # Process in batches to manage memory
     for i in range(0, n_test, batch_size):
@@ -365,7 +234,7 @@ def estimate_conditional_keops_flexible_optimized(
     return results
 
 
-def estimate_conditional_keops_flexible(
+def estimate_conditional_kernel_flexible(
     X: torch.Tensor,           # (n_train, d) - Reference features
     S: torch.Tensor,           # (n_test, d)  - Query features
     E_Y_X: torch.Tensor,       # (n_train,) - Reference values
@@ -430,7 +299,9 @@ def estimate_conditional_keops_flexible(
     # --- 2. Memory-efficient distance calculation ---
     try:
         # Try using chunked distance calculation
-        D2 = chunked_pairwise_distance(Xs_scaled, Ss_scaled, chunk_size=chunk_size)
+        D2 = chunked_pairwise_squared_distances(
+            Xs_scaled, Ss_scaled, chunk_size=chunk_size
+        )
         
         # --- 3. Find K-Nearest Neighbors ---
         dists, inds = torch.topk(D2, actual_k, largest=False, dim=1)
@@ -547,15 +418,15 @@ def estimate_T2_mc_flexible(
         
         try:
             # Use memory-efficient kernel estimator
-            E_Y_S_std_k = estimate_conditional_keops_flexible(
+            E_Y_S_std_k = estimate_conditional_kernel_flexible(
             X_std_torch, S_param_k, E_Yx_std_torch, 
             param_for_kernel, param_type, k=k_kernel,
             chunk_size=chunk_size
             )
         except RuntimeError as e:
             if 'CUDA out of memory' in str(e):
-                print("Warning: CUDA out of memory error detected. Switching to optimized estimator.")
-                E_Y_S_std_k = estimate_conditional_keops_flexible_optimized(
+                print("Warning: CUDA out of memory error detected. Switching to batched estimator.")
+                E_Y_S_std_k = estimate_conditional_kernel_batched(
                     X_std_torch, S_param_k, E_Yx_std_torch,
                     param_for_kernel, param_type, k=k_kernel,
                     max_batch_size=500
@@ -622,15 +493,15 @@ def estimate_T2_kernel_IF_like_flexible(
         # Use memory-efficient kernel estimator
         try:
             # Use memory-efficient kernel estimator
-            mu_S_hat_k = estimate_conditional_keops_flexible(
+            mu_S_hat_k = estimate_conditional_kernel_flexible(
                 X_std_torch, S_param_k, E_Yx_std_torch,
                 param_torch, param_type, k=k_kernel,
                 chunk_size=chunk_size
             )
         except RuntimeError as e:
             if 'CUDA out of memory' in str(e):
-                print("Warning: CUDA out of memory error detected. Switching to optimized estimator.")
-                mu_S_hat_k = estimate_conditional_keops_flexible_optimized(
+                print("Warning: CUDA out of memory error detected. Switching to batched estimator.")
+                mu_S_hat_k = estimate_conditional_kernel_batched(
                     X_std_torch, S_param_k, E_Yx_std_torch,
                     param_torch, param_type, k=k_kernel,
                     max_batch_size=500
@@ -673,13 +544,13 @@ def estimate_E_Y_S_kernel_flexible(X_std_torch: torch.Tensor,
             S_param_k = X_std_torch + epsilon_k * noise_scale
             # Pass detached param for value estimation
         try:
-            E_Y_S_std_k = estimate_conditional_keops_flexible(
+            E_Y_S_std_k = estimate_conditional_kernel_flexible(
                 X_std_torch, S_param_k, E_Yx_std_torch, param_val, param_type, k=k_kernel
             )
         except RuntimeError as e:
             if 'CUDA out of memory' in str(e):
-                print("Warning: CUDA out of memory error detected. Switching to optimized estimator.")
-                E_Y_S_std_k = estimate_conditional_keops_flexible_optimized(
+                print("Warning: CUDA out of memory error detected. Switching to batched estimator.")
+                E_Y_S_std_k = estimate_conditional_kernel_batched(
                     X_std_torch, S_param_k, E_Yx_std_torch, param_val, param_type, k=k_kernel,
                     max_batch_size=500
                 )

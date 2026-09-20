@@ -10,7 +10,8 @@ from dro_feature_selection.config import EPS
 
 # UTILITIES
 def standardize_data(X, Y, classification=False):
-    X_mean = np.mean(X, axis=0); X_std = np.std(X, axis=0)
+    X_mean = np.mean(X, axis=0)
+    X_std = np.std(X, axis=0)
     X_std[X_std < EPS] = EPS
     
     if classification:
@@ -18,8 +19,10 @@ def standardize_data(X, Y, classification=False):
         return (X - X_mean) / X_std, Y, X_mean, X_std, None, None
     else:
         # For regression, standardize Y as before
-        Y_mean = np.mean(Y); Y_std = np.std(Y)
-        if Y_std < EPS: Y_std = EPS
+        Y_mean = np.mean(Y)
+        Y_std = np.std(Y)
+        if Y_std < EPS:
+            Y_std = EPS
         return (X - X_mean) / X_std, (Y - Y_mean) / Y_std, X_mean, X_std, Y_mean, Y_std
 
 def compute_population_stats(selected_indices: List[int],
@@ -105,11 +108,16 @@ def baseline_lasso_comparison(
                 C=1.0 / max(current_alpha, EPS),
                 fit_intercept=False,
                 max_iter=10000,
-                tol=1e-4,
+                tol=1e-6,
                 random_state=seed,
             )
         else:
-            model = Lasso(alpha=current_alpha, fit_intercept=False, max_iter=10000, tol=1e-4)
+            model = Lasso(
+                alpha=current_alpha,
+                fit_intercept=False,
+                max_iter=10000,
+                tol=1e-6,
+            )
         model.fit(X_std, Y_std)
         
         # Get coefficients and selected features

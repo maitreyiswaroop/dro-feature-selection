@@ -26,14 +26,13 @@ from dro_feature_selection.checkpoint import CheckpointManager
 from dro_feature_selection.data_loader import DataManager
 from dro_feature_selection.downstream_eval import DownstreamEvaluator
 from dro_feature_selection.variable_selector import VariableSelector
-from dro_feature_selection.visualization import (
-    create_multi_series_horizontal_bars,
-    plot_training_metrics,
-)
+from dro_feature_selection.visualization import plot_training_metrics
 
 
 def get_latest_run_number(save_path: str) -> int:
-    if not os.path.exists(save_path): os.makedirs(save_path); return 0
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+        return 0
     existing = [d for d in os.listdir(save_path) if os.path.isdir(os.path.join(save_path, d)) and d.startswith('run_')]
     run_nums = [int(d.split('_')[1]) for d in existing if d.split('_')[1].isdigit()]
     return max(run_nums) + 1 if run_nums else 0
@@ -54,6 +53,13 @@ def convert_numpy_to_python(obj: Any) -> Any:
 
 def run_pipeline(args, resume_path=None):
     """Run the full pipeline with modular stages and checkpointing"""
+    pop_data = None
+    pop_data_test_val = None
+    is_classification = False
+    our_method_results = None
+    baseline_results = None
+    downstream_results = None
+
     if args.seed is not None:
         np.random.seed(args.seed)
         torch.manual_seed(args.seed)
@@ -139,7 +145,7 @@ def run_pipeline(args, resume_path=None):
             print(f"Error loading data checkpoint: {e}. Regenerating data...")
             # Fall through to data generation
     
-    if not checkpoint_manager.is_data_loaded() or 'pop_data' not in locals():
+    if not checkpoint_manager.is_data_loaded() or pop_data is None:
         # Load or generate dataset
         print("Generating or loading dataset from cache...")
         
@@ -217,7 +223,7 @@ def run_pipeline(args, resume_path=None):
         if not our_method_results:
             print("Warning: Could not load our method results. Re-running.")
     
-    if not checkpoint_manager.is_our_method_complete() or 'our_method_results' not in locals():
+    if not checkpoint_manager.is_our_method_complete() or our_method_results is None:
         print("Running our variable selection method...")
         scheduler_kwargs = {}
         if args.scheduler_type == 'StepLR':
@@ -281,7 +287,7 @@ def run_pipeline(args, resume_path=None):
         if not baseline_results:
             print("Warning: Could not load baseline results. Re-running.")
     
-    if not checkpoint_manager.is_baselines_complete() or 'baseline_results' not in locals():
+    if not checkpoint_manager.is_baselines_complete() or baseline_results is None:
         print("Running baseline selection methods...")
         baseline_params = {
             'alpha_lasso': args.lasso_alpha,
@@ -305,7 +311,7 @@ def run_pipeline(args, resume_path=None):
         if not downstream_results:
             print("Warning: Could not load downstream evaluation results. Re-running.")
     
-    if not checkpoint_manager.is_downstream_eval_complete() or 'downstream_results' not in locals():
+    if not checkpoint_manager.is_downstream_eval_complete() or downstream_results is None:
         print("Running downstream evaluation...")
         downstream_results = downstream_evaluator.evaluate_selections(
             pop_data_test_val=pop_data_test_val,
@@ -321,12 +327,6 @@ def run_pipeline(args, resume_path=None):
     print(f"\n=== All stages completed successfully! ===")
     print(f"Results stored in: {save_path}")
     
-    # # see if results_comparison_budget_...csv exits, if yes, create_multi_series_horizontal_bars(df, output_dir, file_prefix)
-    # if os.path.exists(os.path.join(save_path, 'results_comparison_budget_*.csv')):
-    #     # create_multi_series_horizontal_bars(df, output_dir, file_prefix)
-    #     df= pd.read_csv(os.path.join(save_path, 'results_comparison_budget_*.csv'))
-    #     create_multi_series_horizontal_bars(save_path, file_prefix='results_comparison_budget_')
-    # visualize training metrics: plot_training_metrics(results, save_dir)
     plot_training_metrics(our_method_results, save_dir=save_path)
 
     return {

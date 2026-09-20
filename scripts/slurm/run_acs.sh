@@ -13,45 +13,36 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPOSITORY_ROOT=$(cd "$SCRIPT_DIR/../.." && pwd)
 cd "$REPOSITORY_ROOT"
 
-# Experiment settings
-SAVE_PATH="./results/acs/single_run"
-POPULATIONS=("acs")
-ACS_DATA_FRACTION=0.1
-M1=10
-M=18
-DATASET_SIZE=30000
-NOISE_SCALE=0.0
-CORR_STRENGTH=0.0
-BUDGET=15
-LEARNING_RATE=0.01 # Single learning rate
-PENALTY_TYPE="Reciprocal_L1"
-PENALTY_LAMBDA=0.0001
-SEED=123 # Single seed
+seed=${SEED:-123}
+SAVE_PATH="./results/acs/paper/seed_${seed}/"
 
 bash "$SCRIPT_DIR/run_experiment.sh" \
-  --populations "${POPULATIONS[@]}" \
-  --acs_data_fraction "$ACS_DATA_FRACTION" \
-  --m1 "$M1" \
-  --m "$M" \
-  --dataset_size "$DATASET_SIZE" \
-  --noise_scale "$NOISE_SCALE" \
-  --corr_strength "$CORR_STRENGTH" \
-  --budget "$BUDGET" \
-  --learning_rate "$LEARNING_RATE" \
-  --penalty_type "$PENALTY_TYPE" \
-  --penalty_lambda "$PENALTY_LAMBDA" \
-  --optimizer_type adam \
+  --populations acs \
+  --acs-data-fraction 0.05 \
+  --m1 10 \
+  --m 18 \
+  --dataset-size 30000 \
+  --noise-scale 0.0 \
+  --corr-strength 0.0 \
+  --budget 15 \
+  --learning-rate 0.01 \
+  --penalty-type Reciprocal_L1 \
+  --penalty-lambda 0.0001 \
+  --optimizer-type adam \
   --parameterization alpha \
-  --alpha_init random_5 \
-  --num_epochs 2 \
+  --alpha-init random_5 \
+  --num-epochs 100 \
   --patience 10 \
-  --gradient_mode autograd \
-  --objective_value_estimator if \
-  --t2_estimator_type mc_plugin \
-  --N_grad_samples 10 \
-  --estimator_type plugin \
-  --base_model_type xgb \
-  --seed "$SEED" \
-  --save_path "$SAVE_PATH" \
-  --force_regenerate_data \
-  --k_kernel 500
+  --param-freezing \
+  --gradient-mode autograd \
+  --objective-value-estimator if \
+  --t2-estimator-type mc_plugin \
+  --N-grad-samples 10 \
+  --no-use-baseline \
+  --estimator-type plugin \
+  --base-model-type xgb \
+  --k-kernel 500 \
+  --lasso-alpha 0.1 \
+  --seed "$seed" \
+  --save-path "$SAVE_PATH" \
+  --force-regenerate-data

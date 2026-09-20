@@ -324,12 +324,8 @@ def IF_estimator_squared_conditional(X, Y, estimator_type="rf", n_folds=N_FOLDS,
 # =============================================================================
 
 from dro_feature_selection.kernel_estimators import (
-    chunked_pairwise_distance,
-    estimate_conditional_expectation_knn,
-    estimate_conditional_kernel_oof,
-    estimate_conditional_keops,
-    estimate_conditional_keops_flexible,
-    estimate_conditional_keops_flexible_optimized,
+    estimate_conditional_kernel,
+    estimate_conditional_kernel_flexible,
     estimate_E_Y_S_kernel_flexible,
     estimate_T2_kernel_IF_like_flexible,
     estimate_T2_mc_flexible,
@@ -439,7 +435,7 @@ def estimate_gradient_reinforce_flexible(X_std_torch: torch.Tensor,
             epsilon_k = torch.randn_like(X_std_torch)
             S_param_k = X_std_torch + epsilon_k * torch.sqrt(noise_var)
             # Estimate g(S) = E[Y_std|S] using kernel, pass detached param
-            g_hat_S_k = estimate_conditional_keops_flexible(
+            g_hat_S_k = estimate_conditional_kernel_flexible(
                 X_std_torch, S_param_k, E_Yx_std_torch, param_detached, param_type, k=k_kernel
             )
             g_hat_S_k_squared = g_hat_S_k.pow(2) # Reward
@@ -587,13 +583,13 @@ def test_estimator(seeds, alpha_lists, X, Y, save_path=None):
                 # T2 IF-IF: Kernel(IF E[Y|X]) -> mean square
                 E_Y_X_if = IF_estimator_conditional_mean(X_np, Y_np, "rf", n_folds=N_FOLDS)
                 E_Y_X_if_t = torch.from_numpy(E_Y_X_if).float().to(X_t.device) # Move to same device
-                E_Y_S_if = estimate_conditional_keops(X_t.to(E_Y_X_if_t.device), S_t.to(E_Y_X_if_t.device), E_Y_X_if_t, alpha_t.to(E_Y_X_if_t.device)).cpu().numpy()
+                E_Y_S_if = estimate_conditional_kernel(X_t.to(E_Y_X_if_t.device), S_t.to(E_Y_X_if_t.device), E_Y_X_if_t, alpha_t.to(E_Y_X_if_t.device)).cpu().numpy()
                 if2k = np.mean(E_Y_S_if**2)
 
                 # T2 IF-Plugin: Kernel(Plugin E[Y|X]) -> mean square
                 E_Y_X_plugin = plugin_estimator_conditional_mean(X_np, Y_np, "rf", n_folds=N_FOLDS)
                 E_Y_X_plugin_t = torch.from_numpy(E_Y_X_plugin).float().to(X_t.device) # Move to same device
-                E_Y_S_plugin = estimate_conditional_keops(X_t.to(E_Y_X_plugin_t.device), S_t.to(E_Y_X_plugin_t.device), E_Y_X_plugin_t, alpha_t.to(E_Y_X_plugin_t.device)).cpu().numpy()
+                E_Y_S_plugin = estimate_conditional_kernel(X_t.to(E_Y_X_plugin_t.device), S_t.to(E_Y_X_plugin_t.device), E_Y_X_plugin_t, alpha_t.to(E_Y_X_plugin_t.device)).cpu().numpy()
                 if2k_plugin = np.mean(E_Y_S_plugin**2)
 
             except Exception as e:
