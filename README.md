@@ -2,11 +2,11 @@
 
 Code for the experiments in **Distributionally Robust Feature Selection** ([paper](https://proceedings.neurips.cc/paper_files/paper/2025/file/5b3f001200198bb4ecaac0a1ea89dd99-Paper-Conference.pdf), NeurIPS 2025).
 
-We study model-agnostic feature selection across multiple populations. The method learns a stochastic feature-degradation mask and minimizes worst-population prediction risk. Under squared loss, this risk can be expressed using the expected conditional variance of the outcome given the degraded features.
+We study model-agnostic feature selection in the group-DRO setting. The method learns a stochastic feature-degradation mask and minimizes worst-population prediction risk. Under squared loss, this risk can be expressed using the expected conditional variance of the outcome given the degraded features.
 
 ## Code map
 
-- `dro_feature_selection/kernel_estimators.py`: differentiable kernel, Monte Carlo, and influence-function-like objective estimators. The batched kernel implementation is `estimate_conditional_kernel_batched`, and its corresponding objective estimator is `estimate_T2_kernel_IF_like_flexible`.
+- `dro_feature_selection/kernel_estimators.py`: differentiable kernel, Monte Carlo, and influence-function-based objective estimators. The batched kernel implementation is `estimate_conditional_kernel_batched`, and its corresponding objective estimator is `estimate_T2_kernel_IF_like_flexible`.
 - `dro_feature_selection/estimators.py`: conditional-mean and gradient estimators used by the paper experiments.
 - `run_experiment.py`: unified, checkpointed experiment driver for synthetic, UCI, and ACS experiments.
 - `dro_feature_selection/`: importable package containing data loading, checkpointing, feature selection, estimators, baselines, evaluation, and visualization.
